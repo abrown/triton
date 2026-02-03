@@ -73,16 +73,34 @@ llvm::Error TritonPlugin::loadPlugin() {
     auto enumerateDialectsAPIOrErr =
         getAPI<EnumeratePyBindHandlesType, EnumeratePyBindHandlesCType>(
             ENUMERATE_DIALECTS);
-    auto dialectPluginInfoAPIOrErr =
-        getAPI<DialectPluginInfoType, DialectPluginInfoCType>(
+    auto getDialectPluginInfoAPIOrErr =
+        getAPI<GetDialectPluginInfoType, GetDialectPluginInfoCType>(
             DIALECT_PLUGININFO);
 
     if (auto Err = enumerateDialectsAPIOrErr.takeError())
       return Err;
-    if (auto Err = dialectPluginInfoAPIOrErr.takeError())
+    if (auto Err = getDialectPluginInfoAPIOrErr.takeError())
       return Err;
     enumerateDialectsAPI = *enumerateDialectsAPIOrErr;
-    dialectPluginInfoAPI = *dialectPluginInfoAPIOrErr;
+    getDialectPluginInfoAPI = *getDialectPluginInfoAPIOrErr;
+  }
+
+  if ((intptr_t)library.getAddressOfSymbol(ENUMERATE_BACKENDS)) {
+    auto enumerateBackendsAPIOrErr =
+        getAPI<EnumeratePyBindHandlesType, EnumeratePyBindHandlesCType>(
+            ENUMERATE_BACKENDS);
+    auto enumerateDialectsAPIOrErr =
+        getAPI<EnumeratePyBindHandlesType, EnumeratePyBindHandlesCType>(
+            ENUMERATE_DIALECTS);
+    auto initializeBackendAPIOrErr =
+        getAPI<InitializeBackendType, InitializeBackendCType>(INIT_BACKEND);
+
+    if (auto Err = enumerateBackendsAPIOrErr.takeError())
+      return Err;
+    if (auto Err = initializeBackendAPIOrErr.takeError())
+      return Err;
+    enumerateBackendsAPI = *enumerateBackendsAPIOrErr;
+    initializeBackendAPI = *initializeBackendAPIOrErr;
   }
 
   isLoaded = true;
@@ -141,6 +159,19 @@ TritonPlugin::getDialectHandles(std::vector<const char *> &dialectNames) {
 }
 
 llvm::Expected<TritonPluginResult>
+TritonPlugin::getBackendHandles(std::vector<const char *> &backendNames) {
+  if (auto Err = loadPlugin())
+    return Err;
+  // Do a check to see if the enumerate-backends api symbol is present, bail as
+  // if there are 0 backends if not
+  intptr_t isBackendPluginSymbolPresent =
+      (intptr_t)library.getAddressOfSymbol(ENUMERATE_BACKENDS);
+  if (!isBackendPluginSymbolPresent)
+    return TP_SUCCESS;
+  return enumeratePyBindHandles(enumerateBackendsAPI, backendNames);
+}
+
+llvm::Expected<TritonPluginResult>
 TritonPlugin::addPass(mlir::PassManager *pm, const char *passHandle) {
   if (auto Err = loadPlugin())
     return Err;
@@ -158,5 +189,13 @@ llvm::Expected<::mlir::DialectPluginLibraryInfo>
 TritonPlugin::getDialectPluginInfo(const char *dialectName) {
   if (auto Err = loadPlugin())
     return Err;
-  return dialectPluginInfoAPI(dialectName);
+  return getDialectPluginInfoAPI(dialectName);
+}
+
+llvm::Expected<TritonPluginResult>
+TritonPlugin::initializeBackend(const char *backendName) {
+  if (auto Err = loadPlugin())
+    return Err;
+  return initializeBackendAPI(backendName);
+}
 }

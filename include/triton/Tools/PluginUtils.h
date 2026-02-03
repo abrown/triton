@@ -26,9 +26,11 @@ public:
   llvm::Error checkLibraryValid(const std::string &error) const;
   static constexpr char ENUMERATE_PASSES[] = "tritonEnumeratePluginPasses";
   static constexpr char ENUMERATE_DIALECTS[] = "tritonEnumeratePluginDialects";
+  static constexpr char ENUMERATE_BACKENDS[] = "tritonEnumeratePluginBackends";
   static constexpr char DIALECT_PLUGININFO[] = "tritonGetDialectPluginInfo";
   static constexpr char ADD_PASS[] = "tritonAddPluginPass";
   static constexpr char REGISTER_PASS[] = "tritonRegisterPluginPass";
+  static constexpr char INIT_BACKEND[] = "tritonInitializeBackend";
 
 private:
   using EnumeratePyBindHandlesType =
@@ -44,10 +46,13 @@ private:
   using RegisterPassType = std::function<TritonPluginResult(const char *)>;
   using RegisterPassCType = TritonPluginResult (*)(const char *);
 
-  using DialectPluginInfoType =
+  using GetDialectPluginInfoType =
       std::function<::mlir::DialectPluginLibraryInfo(const char *)>;
-  using DialectPluginInfoCType =
+  using GetDialectPluginInfoCType =
       ::mlir::DialectPluginLibraryInfo (*)(const char *);
+
+  using InitializeBackendType = std::function<TritonPluginResult(const char *)>;
+  using InitializeBackendCType = TritonPluginResult (*)(const char *);
 
   llvm::Expected<intptr_t> getAddressOfSymbol(const std::string &symbol) const;
 
@@ -78,6 +83,9 @@ public:
   llvm::Expected<TritonPluginResult>
   getDialectHandles(std::vector<const char *> &handles);
 
+  llvm::Expected<TritonPluginResult>
+  getBackendHandles(std::vector<const char *> &handles);
+
   llvm::Expected<TritonPluginResult> addPass(mlir::PassManager *pm,
                                              const char *passHandle);
 
@@ -86,14 +94,18 @@ public:
   llvm::Expected<::mlir::DialectPluginLibraryInfo>
   getDialectPluginInfo(const char *dialectName);
 
+  llvm::Expected<TritonPluginResult> initializeBackend(const char *backendName);
+
 private:
   std::string filename = "";
   mutable llvm::sys::DynamicLibrary library;
   EnumeratePyBindHandlesType enumeratePassesAPI;
   EnumeratePyBindHandlesType enumerateDialectsAPI;
+  EnumeratePyBindHandlesType enumerateBackendsAPI;
   AddPassType addPassAPI;
   RegisterPassType registerPassAPI;
-  DialectPluginInfoType dialectPluginInfoAPI;
+  GetDialectPluginInfoType getDialectPluginInfoAPI;
+  InitializeBackendType initializeBackendAPI;
   bool isLoaded = false;
 };
 
