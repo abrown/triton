@@ -134,9 +134,9 @@ function(add_triton_library name)
   target_compile_options(${name} PRIVATE ${TRITON_DISABLE_EH_RTTI_FLAGS})
 endfunction()
 
-set_property(GLOBAL PROPERTY TRITON_PLUGINS "")
-function(add_triton_plugin name)
-  set_property(GLOBAL APPEND PROPERTY TRITON_PLUGINS ${name})
+set_property(GLOBAL PROPERTY TRITON_BACKENDS "")
+function(add_triton_backend name)
+  set_property(GLOBAL APPEND PROPERTY TRITON_BACKENDS ${name})
   add_triton_object(${name} ${ARGN})
 endfunction()
 
@@ -210,10 +210,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
   endif()
 
   get_property(triton_libs GLOBAL PROPERTY TRITON_LIBS)
-  get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
+  get_property(triton_backends GLOBAL PROPERTY TRITON_BACKENDS)
   set(TRITON_LIBRARIES
     ${triton_libs}
-    ${triton_plugins}
+    ${triton_backends}
 
     # mlir
     MLIRAMDGPUDialect
