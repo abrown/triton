@@ -6,6 +6,7 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/Error.h"
 #include <cstdint>
+#include <vector>
 
 extern "C" {
 enum TritonPluginResult {
@@ -108,5 +109,11 @@ private:
   InitializeBackendType initializeBackendAPI;
   bool isLoaded = false;
 };
+
+/// Load all plugins specified in the `TRITON_EXT_PATHS` environment variable.
+/// This variable should contain a semicolon-separated list of paths to plugin
+/// shared libraries. Triton expects the build system (CMake, setup.py) to
+/// ensure that any in-tree backends are built and added to the list.
+std::vector<TritonPlugin> loadPlugins();
 
 #endif // TRITON_PLUGIN_UTILS_H

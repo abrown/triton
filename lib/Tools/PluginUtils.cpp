@@ -1,4 +1,6 @@
 #include "triton/Tools/PluginUtils.h"
+#include "triton/Tools/Sys/GetEnv.hpp"
+#include "llvm/ADT/StringExtras.h"
 
 llvm::Error TritonPlugin::checkLibraryValid(const std::string &error) const {
   if (!library.isValid()) {
@@ -198,4 +200,14 @@ TritonPlugin::initializeBackend(const char *backendName) {
     return Err;
   return initializeBackendAPI(backendName);
 }
+
+std::vector<TritonPlugin> loadPlugins() {
+  std::vector<TritonPlugin> plugins;
+  if (std::string paths = mlir::triton::tools::getStrEnv("TRITON_EXT_PATHS");
+      !paths.empty()) {
+    for (const auto &path : llvm::split(paths, ';')) {
+      plugins.push_back(TritonPlugin(path.str()));
+    };
+  }
+  return plugins;
 }
