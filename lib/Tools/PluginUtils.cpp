@@ -28,10 +28,10 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
 
   plugin.info = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
 
-  if (plugin.info.apiVersion != MLIR_PLUGIN_API_VERSION)
+  if (plugin.info->apiVersion != MLIR_PLUGIN_API_VERSION)
     return llvm::make_error<llvm::StringError>(
         Twine("Wrong API version on plugin '") + filename + "'. Got version " +
-            Twine(plugin.info.apiVersion) + ", supported version is " +
+            Twine(plugin.info->apiVersion) + ", supported version is " +
             Twine(MLIR_PLUGIN_API_VERSION) + ".",
         llvm::inconvertibleErrorCode());
 
@@ -39,16 +39,16 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
 }
 
 llvm::Error TritonPlugin::addPasses(PassManager &PassManager) const {
-  if (!info.passes && info.numPasses > 0)
+  if (!info->passes && info->numPasses > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid pass pointer in plugin '") + filename + "'.'",
         llvm::inconvertibleErrorCode());
-  LLVM_DEBUG(llvm::dbgs() << "Adding " << info.numPasses
-                          << " passes for plugin " << info.pluginName << ":"
-                          << info.pluginVersion << "\n");
+  LLVM_DEBUG(llvm::dbgs() << "Adding " << info->numPasses
+                          << " passes for plugin " << info->pluginName << ":"
+                          << info->pluginVersion << "\n");
 
-  for (auto i = 0; i < info.numPasses; ++i) {
-    const auto &pass = info.passes[i];
+  for (auto i = 0; i < info->numPasses; ++i) {
+    const auto &pass = info->passes[i];
     if (pass.addPass) {
       LLVM_DEBUG(llvm::dbgs()
                  << "Adding pass " << pass.name << ":" << pass.version << "\n");
@@ -65,16 +65,16 @@ llvm::Error TritonPlugin::addPasses(PassManager &PassManager) const {
 }
 
 llvm::Error TritonPlugin::registerPasses() const {
-  if (!info.passes && info.numPasses > 0)
+  if (!info->passes && info->numPasses > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid pass pointer in plugin '") + filename + "'.'",
         llvm::inconvertibleErrorCode());
-  LLVM_DEBUG(llvm::dbgs() << "Registering " << info.numPasses
-                          << " passes for plugin " << info.pluginName << ":"
-                          << info.pluginVersion << "\n");
+  LLVM_DEBUG(llvm::dbgs() << "Registering " << info->numPasses
+                          << " passes for plugin " << info->pluginName << ":"
+                          << info->pluginVersion << "\n");
 
-  for (auto i = 0; i < info.numPasses; ++i) {
-    const auto &pass = info.passes[i];
+  for (auto i = 0; i < info->numPasses; ++i) {
+    const auto &pass = info->passes[i];
     if (pass.registerPass) {
       LLVM_DEBUG(llvm::dbgs() << "Registering pass " << pass.name << ":"
                               << pass.version << "\n");
@@ -92,16 +92,16 @@ llvm::Error TritonPlugin::registerPasses() const {
 
 llvm::Error
 TritonPlugin::registerDialects(DialectRegistry &dialectRegistry) const {
-  if (!info.dialects && info.numDialects > 0)
+  if (!info->dialects && info->numDialects > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid dialect pointer in plugin '") + filename + "'.'",
         llvm::inconvertibleErrorCode());
-  LLVM_DEBUG(llvm::dbgs() << "Registering " << info.numDialects
-                          << " dialects for plugin " << info.pluginName << ":"
-                          << info.pluginVersion << "\n");
+  LLVM_DEBUG(llvm::dbgs() << "Registering " << info->numDialects
+                          << " dialects for plugin " << info->pluginName << ":"
+                          << info->pluginVersion << "\n");
 
-  for (auto i = 0; i < info.numDialects; ++i) {
-    const auto &dialect = info.dialects[i];
+  for (auto i = 0; i < info->numDialects; ++i) {
+    const auto &dialect = info->dialects[i];
     if (dialect.registerDialect) {
       LLVM_DEBUG(llvm::dbgs() << "Registering dialect " << dialect.name << ":"
                               << dialect.version << "\n");

@@ -93,13 +93,13 @@ public:
   llvm::StringRef getFilename() const { return filename; }
 
   /// Get the plugin name.
-  llvm::StringRef getPluginName() const { return info.pluginName; }
+  llvm::StringRef getPluginName() const { return info->pluginName; }
 
   /// Get the plugin version.
-  llvm::StringRef getPluginVersion() const { return info.pluginVersion; }
+  llvm::StringRef getPluginVersion() const { return info->pluginVersion; }
 
   /// Get the plugin API version.
-  uint32_t getAPIVersion() const { return info.apiVersion; }
+  uint32_t getAPIVersion() const { return info->apiVersion; }
 
   /// Invoke the \c AddPassCallback for each pass registered in this
   /// plugin.
@@ -120,7 +120,7 @@ private:
 
   std::string filename;
   llvm::sys::DynamicLibrary library;
-  PluginInfo info;
+  PluginInfo *info;
 };
 
 /// Load all plugins specified in the `TRITON_PLUGIN_PATHS` environment
@@ -138,7 +138,8 @@ const std::vector<TritonPlugin> loadPlugins();
 /// When a plugin is loaded by the driver, it will call this entry point to
 /// obtain information about this plugin and how to load it. This function needs
 /// to be implemented by the plugin.
-extern "C" mlir::triton::plugin::PluginInfo LLVM_ATTRIBUTE_WEAK
+extern "C" mlir::triton::plugin::PluginInfo *LLVM_ATTRIBUTE_WEAK
 tritonGetPluginInfo();
+// TODO: needs deallocation API
 
 #endif // TRITON_PLUGIN_UTILS_H
