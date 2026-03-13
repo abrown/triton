@@ -52,13 +52,7 @@ llvm::Error TritonPlugin::addPasses(PassManager &PassManager) const {
     if (pass.addPass) {
       LLVM_DEBUG(llvm::dbgs()
                  << "Adding pass " << pass.name << ":" << pass.version << "\n");
-      Result result = pass.addPass(&PassManager);
-      if (result != TP_SUCCESS) {
-        return llvm::make_error<llvm::StringError>(
-            Twine("Failed to add pass '") + pass.name + "' from plugin '" +
-                filename + "'. Error code: " + std::to_string(result),
-            llvm::inconvertibleErrorCode());
-      }
+      pass.addPass(&PassManager);
     }
   }
   return llvm::Error::success();
@@ -78,13 +72,7 @@ llvm::Error TritonPlugin::registerPasses() const {
     if (pass.registerPass) {
       LLVM_DEBUG(llvm::dbgs() << "Registering pass " << pass.name << ":"
                               << pass.version << "\n");
-      Result result = pass.registerPass();
-      if (result != TP_SUCCESS) {
-        return llvm::make_error<llvm::StringError>(
-            Twine("Failed to register pass '") + pass.name + "' from plugin '" +
-                filename + "'. Error code: " + std::to_string(result),
-            llvm::inconvertibleErrorCode());
-      }
+      pass.registerPass();
     }
   }
   return llvm::Error::success();

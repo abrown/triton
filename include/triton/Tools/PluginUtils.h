@@ -33,9 +33,9 @@ enum Result {
 };
 
 // Types for plugin callback functions.
-typedef Result (*AddPassCallback)(PassManager *);
-typedef Result (*RegisterPassCallback)();
-typedef Result (*RegisterDialectCallback)(DialectRegistry *);
+typedef void (*AddPassCallback)(PassManager *);
+typedef void (*RegisterPassCallback)();
+typedef void (*RegisterDialectCallback)(DialectRegistry *);
 
 /// Information provided by a plugin for loading its passes.
 typedef struct PassInfo {
