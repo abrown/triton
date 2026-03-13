@@ -101,9 +101,9 @@ public:
   /// Get the plugin API version.
   uint32_t getAPIVersion() const { return info->apiVersion; }
 
-  /// Invoke the \c AddPassCallback for each pass registered in this
-  /// plugin.
-  llvm::Error addPasses(PassManager &passManager) const;
+  /// List the available passes; this allows us invoke the \c
+  /// AddPassCallback while knowing the pass name.
+  const llvm::Expected<std::vector<PassInfo *>> listPasses() const;
 
   /// Invoke the \c RegisterPassCallback for each pass registered in this
   /// plugin.

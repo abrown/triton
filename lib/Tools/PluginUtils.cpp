@@ -38,24 +38,27 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
   return plugin;
 }
 
-llvm::Error TritonPlugin::addPasses(PassManager &PassManager) const {
+const llvm::Expected<std::vector<PassInfo *>> TritonPlugin::listPasses() const {
   if (!info->passes && info->numPasses > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid pass pointer in plugin '") + filename + "'.'",
         llvm::inconvertibleErrorCode());
-  LLVM_DEBUG(llvm::dbgs() << "Adding " << info->numPasses
+  LLVM_DEBUG(llvm::dbgs() << "Listing " << info->numPasses
                           << " passes for plugin " << info->pluginName << ":"
                           << info->pluginVersion << "\n");
 
+  std::vector<PassInfo *> passes;
   for (auto i = 0; i < info->numPasses; ++i) {
-    const auto &pass = info->passes[i];
-    if (pass.addPass) {
-      LLVM_DEBUG(llvm::dbgs()
-                 << "Adding pass " << pass.name << ":" << pass.version << "\n");
-      pass.addPass(&PassManager);
+    // TODO: the safety of this pointer-passing is not yet checked; prefer some
+    // kind of smart pointer here?
+    const auto pass = &info->passes[i];
+    if (pass->addPass) {
+      LLVM_DEBUG(llvm::dbgs() << "Listing pass " << pass->name << ":"
+                              << pass->version << "\n");
+      passes.push_back(pass);
     }
   }
-  return llvm::Error::success();
+  return passes;
 }
 
 llvm::Error TritonPlugin::registerPasses() const {
