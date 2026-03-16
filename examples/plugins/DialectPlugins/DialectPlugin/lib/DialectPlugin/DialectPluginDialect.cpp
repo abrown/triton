@@ -50,7 +50,7 @@ static void registerTritonPluginDialect(DialectRegistry *registry) {
   mlir::triton::plugin::registerpluginPasses();
 }
 
-extern "C" plugin::PluginInfo *tritonGetPluginInfo() {
+TRITON_PLUGIN_API plugin::PluginInfo *tritonGetPluginInfo() {
   static plugin::PassInfo pass = {PASS_NAME, VERSION, addTritonPluginPass,
                                   registerTritonPluginPass};
   static plugin::PassInfo passes[] = {pass};
@@ -62,6 +62,6 @@ extern "C" plugin::PluginInfo *tritonGetPluginInfo() {
   return &info;
 }
 
-extern "C" void tritonReleasePluginInfo(plugin::PluginInfo *info) {
+TRITON_PLUGIN_API void tritonReleasePluginInfo(plugin::PluginInfo *info) {
   // No resources to free in the current implementation.
 }

@@ -25,6 +25,9 @@ namespace mlir::triton::plugin {
 
 extern "C" {
 
+/// Use this helper macro on the public entry point for a Triton plugin.
+#define TRITON_PLUGIN_API extern "C" __attribute__((visibility("default")))
+
 /// A result code for plugin operations; this is used by plugin callbacks to
 /// signal success or failure to Triton.
 enum Result {
