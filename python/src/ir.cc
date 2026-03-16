@@ -341,8 +341,8 @@ void init_triton_ir(py::module &&m) {
 
     // Register plugin dialects.
     for (const auto &plugin : mlir::triton::plugin::loadPlugins()) {
-      if (auto result = plugin.registerDialects(registry); !result)
-        llvm::reportFatalUsageError(std::move(result));
+      if (auto err = plugin.registerDialects(registry))
+        llvm::reportFatalUsageError(std::move(err));
     }
 
     registry.insert<TritonDialect, ::mlir::triton::gpu::TritonGPUDialect,
