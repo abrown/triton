@@ -120,8 +120,12 @@ TritonPlugin::registerDialects(DialectRegistry &dialectRegistry) const {
   return llvm::Error::success();
 }
 
+static std::vector<TritonPlugin> plugins;
+static bool pluginsLoaded = false;
 const std::vector<TritonPlugin> mlir::triton::plugin::loadPlugins() {
-  std::vector<TritonPlugin> plugins;
+  if (pluginsLoaded)
+    return plugins;
+
   if (const char *env = std::getenv("TRITON_PLUGIN_PATHS")) {
     llvm::SmallVector<llvm::StringRef, 4> paths;
     llvm::StringRef(env).split(paths, ':');
@@ -137,6 +141,8 @@ const std::vector<TritonPlugin> mlir::triton::plugin::loadPlugins() {
       plugins.push_back(std::move(*pluginOrErr));
     }
   }
+
+  pluginsLoaded = true;
   return plugins;
 }
 
