@@ -79,6 +79,16 @@ typedef struct PluginInfo {
 } PluginInfo;
 }
 
+/// A helper structure for storing information about a pass registered by a
+/// plugin.
+struct Pass {
+  Pass(const char *name, AddPassCallback addPass)
+      : name(name), addPass(addPass) {}
+
+  const char *name;
+  const AddPassCallback addPass;
+};
+
 /// A loaded Triton plugin.
 ///
 /// An instance of this class wraps a loaded dialect plugin and gives access to
@@ -106,8 +116,7 @@ public:
 
   /// List the available passes; this allows us invoke the \c
   /// AddPassCallback while knowing the pass name.
-  const llvm::Expected<std::vector<std::shared_ptr<PassInfo>>>
-  listPasses() const;
+  const llvm::Expected<std::vector<Pass>> listPasses() const;
 
   /// Invoke the \c RegisterPassCallback for each pass registered in this
   /// plugin.
@@ -124,7 +133,7 @@ private:
 
   std::string filename;
   llvm::sys::DynamicLibrary library;
-  std::shared_ptr<PluginInfo> info;
+  PluginInfo *info;
 };
 
 /// Load all plugins specified in the `TRITON_PLUGIN_PATHS` environment
@@ -133,7 +142,7 @@ private:
 ///
 /// \returns Returns the list of successfully loaded plugins. If any plugin
 /// fails to load, it crashes with an LLVM usage error.
-const std::vector<TritonPlugin> loadPlugins();
+const std::vector<TritonPlugin> &loadPlugins();
 
 } // namespace mlir::triton::plugin
 

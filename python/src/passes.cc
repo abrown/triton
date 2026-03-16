@@ -107,9 +107,8 @@ void init_plugin_passes(py::module &&m) {
     if (auto err = passesOrError.takeError()) {
       llvm::reportFatalUsageError(std::move(err));
     } else {
-      for (const auto &passInfo : passesOrError.get()) {
-        m.def(passInfo->name,
-              [passInfo](mlir::PassManager &pm) { passInfo->addPass(&pm); });
+      for (const auto &pass : passesOrError.get()) {
+        m.def(pass.name, [pass](mlir::PassManager &pm) { pass.addPass(&pm); });
       }
     }
   }

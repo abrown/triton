@@ -1,6 +1,7 @@
 #include "triton/Tools/PluginUtils.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Error.h"
+
 #define DEBUG_TYPE "triton-plugins"
 
 using namespace mlir::triton::plugin;
@@ -25,17 +26,7 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
         Twine("Plugin entry point not found in '") + filename,
         llvm::inconvertibleErrorCode());
 
-  intptr_t releaseInfoFn =
-      (intptr_t)library.getAddressOfSymbol("tritonReleasePluginInfo");
-  if (!releaseInfoFn)
-    return llvm::make_error<llvm::StringError>(
-        Twine("Plugin release function not found in '") + filename,
-        llvm::inconvertibleErrorCode());
-
-  auto infoPtr = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
-  auto releaseInfoFnPtr =
-      reinterpret_cast<decltype(tritonReleasePluginInfo) *>(releaseInfoFn);
-  plugin.info = std::shared_ptr<PluginInfo>(infoPtr, releaseInfoFnPtr);
+  plugin.info = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
 
   if (plugin.info->apiVersion != TRITON_PLUGIN_API_VERSION)
     return llvm::make_error<llvm::StringError>(
@@ -47,8 +38,7 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
   return plugin;
 }
 
-const llvm::Expected<std::vector<std::shared_ptr<PassInfo>>>
-TritonPlugin::listPasses() const {
+const llvm::Expected<std::vector<Pass>> TritonPlugin::listPasses() const {
   if (!info->passes && info->numPasses > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid pass pointer in plugin '") + filename + "'.'",
@@ -57,23 +47,13 @@ TritonPlugin::listPasses() const {
                           << " passes for plugin " << info->pluginName << ":"
                           << info->pluginVersion << "\n");
 
-  std::vector<std::shared_ptr<PassInfo>> passes;
+  std::vector<Pass> passes;
   for (auto i = 0; i < info->numPasses; ++i) {
-    // SAFETY: passing out a pointer to an internal struct could be dangerous;
-    // if the plugin is unloaded, this pointer could become invalid.
-    // Specifically, Triton does not control when PassInfo is used after it is
-    // handed off to Python in a callback function. To avoid any issues, we wrap
-    // the PassInfo pointer found inside PluginInfo with shared_ptr's aliasing
-    // constructor; this ensures that the PluginInfo pointer stays alive as long
-    // as the PassInfo pointer is still in use.
-    //
-    // See https://en.cppreference.com/w/cpp/memory/shared_ptr/shared_ptr.html.
-    const auto passPtr = &info->passes[i];
-    auto pass = std::shared_ptr<PassInfo>(info, passPtr);
+    const auto pass = &info->passes[i];
     if (pass->addPass) {
       LLVM_DEBUG(llvm::dbgs() << "Listing pass " << pass->name << ":"
                               << pass->version << "\n");
-      passes.push_back(pass);
+      passes.push_back(Pass(pass->name, pass->addPass));
     }
   }
   return passes;
@@ -122,7 +102,7 @@ TritonPlugin::registerDialects(DialectRegistry &dialectRegistry) const {
 
 static std::vector<TritonPlugin> plugins;
 static bool pluginsLoaded = false;
-const std::vector<TritonPlugin> mlir::triton::plugin::loadPlugins() {
+const std::vector<TritonPlugin> &mlir::triton::plugin::loadPlugins() {
   if (pluginsLoaded)
     return plugins;
 
