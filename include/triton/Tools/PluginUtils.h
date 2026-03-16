@@ -21,10 +21,6 @@
 #include <cstdint>
 #include <vector>
 
-namespace mlir::triton::plugin {
-
-extern "C" {
-
 /// Identifies the API version understood by this plugin.
 ///
 /// This version should be incremented for ABI-breaking changes in the structs
@@ -37,6 +33,9 @@ extern "C" {
 
 /// Use this helper macro on the public entry point for a Triton plugin.
 #define TRITON_PLUGIN_API extern "C" __attribute__((visibility("default")))
+
+namespace mlir::triton::plugin {
+extern "C" {
 
 // Types for plugin callback functions.
 typedef void (*AddPassCallback)(PassManager *);
