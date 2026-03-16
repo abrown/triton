@@ -53,3 +53,7 @@ extern "C" plugin::PluginInfo *tritonGetPluginInfo() {
       MLIR_PLUGIN_API_VERSION, PLUGIN_NAME, VERSION, passes, 1, nullptr, 0};
   return &info;
 }
+
+extern "C" void tritonReleasePluginInfo(plugin::PluginInfo *info) {
+  // No resources to free in the current implementation.
+}

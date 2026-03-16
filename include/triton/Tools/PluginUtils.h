@@ -103,7 +103,8 @@ public:
 
   /// List the available passes; this allows us invoke the \c
   /// AddPassCallback while knowing the pass name.
-  const llvm::Expected<std::vector<PassInfo *>> listPasses() const;
+  const llvm::Expected<std::vector<std::shared_ptr<PassInfo>>>
+  listPasses() const;
 
   /// Invoke the \c RegisterPassCallback for each pass registered in this
   /// plugin.
@@ -120,7 +121,7 @@ private:
 
   std::string filename;
   llvm::sys::DynamicLibrary library;
-  PluginInfo *info;
+  std::shared_ptr<PluginInfo> info;
 };
 
 /// Load all plugins specified in the `TRITON_PLUGIN_PATHS` environment
@@ -135,11 +136,37 @@ const std::vector<TritonPlugin> loadPlugins();
 
 /// The public entry point for retrieving a Triton plugin.
 ///
-/// When a plugin is loaded by the driver, it will call this entry point to
-/// obtain information about this plugin and how to load it. This function needs
+/// When a plugin is loaded by the driver, Triton call this entry point to
+/// obtain information about the plugin and how to load it. This function needs
 /// to be implemented by the plugin.
+///
+/// Triton expects this function to return a pointer to a valid \c PluginInfo
+/// struct. Though it is likely a static struct, Triton expects plugins to
+/// provide a corresponding release function, \c tritonReleasePluginInfo, to
+/// free any resources.
 extern "C" mlir::triton::plugin::PluginInfo *LLVM_ATTRIBUTE_WEAK
 tritonGetPluginInfo();
-// TODO: needs deallocation API
+
+/// Release the plugin information struct returned by \c tritonGetPluginInfo.
+///
+/// This function is expected to free any resources associated with the provided
+/// \c PluginInfo pointer. Triton will call this function when the plugin is
+/// unloaded.
+///
+/// The most common pattern is to define a static \c PluginInfo struct in the
+/// plugin and implement this with a no-op function:
+///
+/// ```
+/// mlir::triton::plugin::PluginInfo *tritonGetPluginInfo() {
+///   static mlir::triton::plugin::PluginInfo info = { ... };
+///   return &info;
+/// }
+///
+/// void tritonReleasePluginInfo(mlir::triton::plugin::PluginInfo *info) {
+///   // No resources to free in this case.
+/// }
+/// ```
+extern "C" void LLVM_ATTRIBUTE_WEAK
+tritonReleasePluginInfo(mlir::triton::plugin::PluginInfo *info);
 
 #endif // TRITON_PLUGIN_UTILS_H
