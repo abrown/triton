@@ -25,6 +25,16 @@ namespace mlir::triton::plugin {
 
 extern "C" {
 
+/// Identifies the API version understood by this plugin.
+///
+/// This version should be incremented for ABI-breaking changes in the structs
+/// below; we check this version when loading a new \c TritonPlugin. See
+/// similar: [MLIR_PLUGIN_API_VERSION].
+///
+/// [MLIR_PLUGIN_API_VERSION]:
+/// https://github.com/llvm/llvm-project/blob/80d6e0b8/mlir/include/mlir/Tools/Plugins/PassPlugin.h#L32
+#define TRITON_PLUGIN_API_VERSION 1
+
 /// Use this helper macro on the public entry point for a Triton plugin.
 #define TRITON_PLUGIN_API extern "C" __attribute__((visibility("default")))
 
@@ -58,10 +68,8 @@ typedef struct DialectInfo {
 /// Container for all plugin information; this is returned by the plugin
 /// library's public entry point, @ref tritonGetPluginInfo.
 typedef struct PluginInfo {
-  /// The API version understood by this plugin, usually \c
-  /// MLIR_PLUGIN_API_VERSION
+  /// The API version used by this plugin, see \c TRITON_PLUGIN_API_VERSION.
   uint32_t apiVersion;
-  // TODO: not sure if we want to worry about this yet...
 
   /// A meaningful name of the plugin.
   const char *pluginName;

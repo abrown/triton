@@ -58,7 +58,7 @@ TRITON_PLUGIN_API plugin::PluginInfo *tritonGetPluginInfo() {
                                         registerTritonPluginDialect};
   static plugin::DialectInfo dialects[] = {dialect};
   static plugin::PluginInfo info = {
-      MLIR_PLUGIN_API_VERSION, PLUGIN_NAME, VERSION, passes, 1, dialects, 1};
+      TRITON_PLUGIN_API_VERSION, PLUGIN_NAME, VERSION, passes, 1, dialects, 1};
   return &info;
 }
 

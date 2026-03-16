@@ -37,11 +37,11 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
       reinterpret_cast<decltype(tritonReleasePluginInfo) *>(releaseInfoFn);
   plugin.info = std::shared_ptr<PluginInfo>(infoPtr, releaseInfoFnPtr);
 
-  if (plugin.info->apiVersion != MLIR_PLUGIN_API_VERSION)
+  if (plugin.info->apiVersion != TRITON_PLUGIN_API_VERSION)
     return llvm::make_error<llvm::StringError>(
         Twine("Wrong API version on plugin '") + filename + "'. Got version " +
             Twine(plugin.info->apiVersion) + ", supported version is " +
-            Twine(MLIR_PLUGIN_API_VERSION) + ".",
+            Twine(TRITON_PLUGIN_API_VERSION) + ".",
         llvm::inconvertibleErrorCode());
 
   return plugin;

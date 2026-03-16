@@ -50,7 +50,7 @@ TRITON_PLUGIN_API plugin::PluginInfo *tritonGetPluginInfo() {
                                   registerTritonPluginPass};
   static plugin::PassInfo passes[] = {pass};
   static plugin::PluginInfo info = {
-      MLIR_PLUGIN_API_VERSION, PLUGIN_NAME, VERSION, passes, 1, nullptr, 0};
+      TRITON_PLUGIN_API_VERSION, PLUGIN_NAME, VERSION, passes, 1, nullptr, 0};
   return &info;
 }
 
