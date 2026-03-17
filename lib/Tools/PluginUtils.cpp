@@ -26,15 +26,18 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
         Twine("Plugin entry point not found in '") + filename,
         llvm::inconvertibleErrorCode());
 
+  intptr_t releaseInfoFn =
+      (intptr_t)library.getAddressOfSymbol("tritonReleasePluginInfo");
+  if (!releaseInfoFn)
+    return llvm::make_error<llvm::StringError>(
+        Twine("Plugin release function not found in '") + filename,
+        llvm::inconvertibleErrorCode());
+
+  auto releasePtr =
+      reinterpret_cast<decltype(tritonReleasePluginInfo) *>(releaseInfoFn);
   auto infoPtr = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
-  plugin.info =
-      std::shared_ptr<PluginInfo>(infoPtr, [&library](PluginInfo *info) {
-        intptr_t releaseInfoFn =
-            (intptr_t)library.getAddressOfSymbol("tritonReleasePluginInfo");
-        if (releaseInfoFn)
-          reinterpret_cast<decltype(tritonReleasePluginInfo) *>(releaseInfoFn)(
-              info);
-      });
+  plugin.info = std::shared_ptr<PluginInfo>(
+      infoPtr, [releasePtr](PluginInfo *info) { releasePtr(info); });
 
   if (plugin.info->apiVersion != TRITON_PLUGIN_API_VERSION)
     return llvm::make_error<llvm::StringError>(
