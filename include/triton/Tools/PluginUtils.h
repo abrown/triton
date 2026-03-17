@@ -116,7 +116,8 @@ public:
 
   /// List the available passes; this allows us invoke the \c
   /// AddPassCallback while knowing the pass name.
-  const llvm::Expected<std::vector<Pass>> listPasses() const;
+  const llvm::Expected<std::vector<std::shared_ptr<PassInfo>>>
+  listPasses() const;
 
   /// Invoke the \c RegisterPassCallback for each pass registered in this
   /// plugin.
@@ -133,7 +134,7 @@ private:
 
   std::string filename;
   llvm::sys::DynamicLibrary library;
-  PluginInfo *info;
+  std::shared_ptr<PluginInfo> info;
 };
 
 /// Load all plugins specified in the `TRITON_PLUGIN_PATHS` environment

@@ -26,7 +26,15 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
         Twine("Plugin entry point not found in '") + filename,
         llvm::inconvertibleErrorCode());
 
-  plugin.info = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
+  auto infoPtr = reinterpret_cast<decltype(tritonGetPluginInfo) *>(getInfoFn)();
+  plugin.info =
+      std::shared_ptr<PluginInfo>(infoPtr, [&library](PluginInfo *info) {
+        intptr_t releaseInfoFn =
+            (intptr_t)library.getAddressOfSymbol("tritonReleasePluginInfo");
+        if (releaseInfoFn)
+          reinterpret_cast<decltype(tritonReleasePluginInfo) *>(releaseInfoFn)(
+              info);
+      });
 
   if (plugin.info->apiVersion != TRITON_PLUGIN_API_VERSION)
     return llvm::make_error<llvm::StringError>(
@@ -38,7 +46,8 @@ llvm::Expected<TritonPlugin> TritonPlugin::load(const std::string &filename) {
   return plugin;
 }
 
-const llvm::Expected<std::vector<Pass>> TritonPlugin::listPasses() const {
+const llvm::Expected<std::vector<std::shared_ptr<PassInfo>>>
+TritonPlugin::listPasses() const {
   if (!info->passes && info->numPasses > 0)
     return llvm::make_error<llvm::StringError>(
         Twine("Invalid pass pointer in plugin '") + filename + "'.'",
@@ -47,13 +56,15 @@ const llvm::Expected<std::vector<Pass>> TritonPlugin::listPasses() const {
                           << " passes for plugin " << info->pluginName << ":"
                           << info->pluginVersion << "\n");
 
-  std::vector<Pass> passes;
+  std::vector<std::shared_ptr<PassInfo>> passes;
   for (auto i = 0; i < info->numPasses; ++i) {
-    const auto pass = &info->passes[i];
+    // TODO: safety
+    const auto passPtr = &info->passes[i];
+    auto pass = std::shared_ptr<PassInfo>(info, passPtr);
     if (pass->addPass) {
       LLVM_DEBUG(llvm::dbgs() << "Listing pass " << pass->name << ":"
                               << pass->version << "\n");
-      passes.push_back(Pass(pass->name, pass->addPass));
+      passes.push_back(pass);
     }
   }
   return passes;
