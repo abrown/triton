@@ -1836,7 +1836,14 @@ void init_triton_ir(py::module &&m) {
     for (const auto &op : plugin.listOps()) {
       TritonOpBuilderBinding.def(
           op.name, [op](TritonOpBuilder &self, std::vector<Value> args) {
-            op.addOp(self, args);
+            auto result = op.addOp(self, args);
+            if (auto err = result.takeError()) {
+              llvm::Error wrappedErr = llvm::createStringError(
+                  llvm::Twine("Failed to create custom op: ") + op.name +
+                  ". Error: " + llvm::toString(std::move(err)));
+              llvm::reportFatalUsageError(std::move(wrappedErr));
+            }
+            return std::move(*result);
           });
     }
   }

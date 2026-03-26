@@ -42,7 +42,8 @@ using AddPassCallback = void (*)(mlir::PassManager *,
                                  const std::vector<std::string> &);
 using RegisterPassCallback = void (*)();
 using RegisterDialectCallback = void (*)(mlir::DialectRegistry *);
-using AddOpCallback = void (*)(TritonOpBuilder &, std::vector<mlir::Value> &);
+using AddOpCallback = llvm::Expected<mlir::Value> (*)(
+    TritonOpBuilder &, const std::vector<mlir::Value> &);
 
 /// Information provided by a plugin for loading its passes.
 struct PassInfo {

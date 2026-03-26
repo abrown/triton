@@ -52,13 +52,12 @@ static void registerTritonPluginDialect(DialectRegistry *registry) {
   mlir::triton::plugin::registerpluginPasses();
 }
 
-static void addTritonPluginCustomOp(TritonOpBuilder &self,
-                                    std::vector<mlir::Value> &operands) {
-  ::mlir::Value &dst = operands[0];
-  ::mlir::Value &src = operands[1];
-
-  dst = self.create<arith::AddFOp>(src, src);
-  operands[0] = dst;
+static llvm::Expected<mlir::Value>
+addTritonPluginCustomOp(TritonOpBuilder &self,
+                        const std::vector<mlir::Value> &operands) {
+  ::mlir::Value dst = operands[0];
+  ::mlir::Value src = operands[1];
+  return self.create<arith::AddFOp>(src, src);
 }
 
 TRITON_PLUGIN_API plugin::PluginInfo *tritonGetPluginInfo() {
