@@ -259,6 +259,12 @@ function(add_triton_library name)
   set_property(GLOBAL APPEND PROPERTY TRITON_LIBS ${name})
   add_triton_object(${name} ${ARGN})
   target_compile_options(${name} PRIVATE ${TRITON_DISABLE_EH_RTTI_FLAGS})
+  if(TRITON_BUILD_PYTHON_MODULE AND NOT MSVC)
+    # libtritoncore must export the C++ surface consumed by the pybind-only
+    # libtriton shared library.
+    target_compile_options(${name} PRIVATE
+      "$<$<COMPILE_LANGUAGE:CXX>:-fvisibility=default>")
+  endif()
 endfunction()
 
 set_property(GLOBAL PROPERTY TRITON_PLUGINS "")
@@ -346,9 +352,8 @@ if(TRITON_BUILD_PYTHON_MODULE)
 
   get_property(triton_libs GLOBAL PROPERTY TRITON_LIBS)
   get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
-  set(TRITON_LIBRARIES
+  set(TRITON_CORE_LIBRARIES
     ${triton_libs}
-    ${triton_plugins}
 
     # mlir
     MLIRNVVMDialect
@@ -375,25 +380,26 @@ if(TRITON_BUILD_PYTHON_MODULE)
     # LLVMNVPTXAsmPrinter
     LLVMAMDGPUCodeGen
     LLVMAMDGPUAsmParser
-
+  )
+  set(TRITON_PYTHON_LIBRARIES
+    ${triton_plugins}
     Python3::Module
     pybind11::headers
-
   )
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR # Linux arm64
      CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" OR # macOS arm64
      CMAKE_OSX_ARCHITECTURES MATCHES "arm64")  # also macOS arm64
-      list(APPEND TRITON_LIBRARIES
+      list(APPEND TRITON_CORE_LIBRARIES
           LLVMAArch64CodeGen
           LLVMAArch64AsmParser
       )
   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64")
-      list(APPEND TRITON_LIBRARIES
+      list(APPEND TRITON_CORE_LIBRARIES
           LLVMX86CodeGen
           LLVMX86AsmParser
       )
   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
-      list(APPEND TRITON_LIBRARIES
+      list(APPEND TRITON_CORE_LIBRARIES
         LLVMPowerPCAsmParser
         LLVMPowerPCCodeGen
       )
@@ -412,6 +418,15 @@ if(TRITON_BUILD_PYTHON_MODULE)
 
   set(TRITON_BACKENDS_TUPLE "(${TRITON_BACKENDS_TUPLE})")
   add_compile_definitions(TRITON_BACKENDS_TUPLE=${TRITON_BACKENDS_TUPLE})
+
+  add_library(tritoncore SHARED)
+  target_link_libraries(tritoncore PRIVATE ${TRITON_CORE_LIBRARIES})
+
+  # Do not propagate libraries that libtritoncore depends on. This ensures
+  # dependents do not accidentally link in their own copies of core Triton
+  # code and LLVM.
+  set_target_properties(tritoncore PROPERTIES INTERFACE_LINK_LIBRARIES "")
+
   add_library(triton SHARED ${PYTHON_SRC_PATH}/main.cc
                   ${PYTHON_SRC_PATH}/ir.cc
                   ${PYTHON_SRC_PATH}/gluon_ir.cc
@@ -422,8 +437,11 @@ if(TRITON_BUILD_PYTHON_MODULE)
                   ${PYTHON_SRC_PATH}/llvm.cc
                   ${PYTHON_SRC_PATH}/specialize.cc)
 
-  # Link triton with its dependencies
-  target_link_libraries(triton PRIVATE ${TRITON_LIBRARIES})
+  # Keep Python-specific code in libtriton and link against C++ core.
+  target_link_libraries(triton PRIVATE
+    tritoncore
+    ${TRITON_CORE_LIBRARIES}
+    ${TRITON_PYTHON_LIBRARIES})
 
 
   # Do not propagate libraries that libtriton depends on. This ensures that
@@ -436,9 +454,20 @@ if(TRITON_BUILD_PYTHON_MODULE)
     set_target_properties(triton PROPERTIES SUFFIX ".pyd")
     set_target_properties(triton PROPERTIES PREFIX "lib")
   else()
-    target_link_libraries(triton PRIVATE z)
+    target_link_libraries(tritoncore PRIVATE z)
+    if(APPLE)
+      set(_TRITON_REL_RPATH "@loader_path")
+    else()
+      set(_TRITON_REL_RPATH "$ORIGIN")
+    endif()
+    set_target_properties(triton PROPERTIES
+      BUILD_RPATH_USE_ORIGIN ON
+      BUILD_WITH_INSTALL_RPATH ON
+      BUILD_RPATH "${_TRITON_REL_RPATH}"
+      INSTALL_RPATH "${_TRITON_REL_RPATH}"
+      INSTALL_RPATH_USE_LINK_PATH FALSE)
   endif()
-  target_link_options(triton PRIVATE ${LLVM_LDFLAGS})
+  target_link_options(tritoncore PRIVATE ${LLVM_LDFLAGS})
 
   if(NOT TRITON_EXT_ENABLED)
     # When extensions are disabled, only export the Python entrypoint.
@@ -457,7 +486,7 @@ if(TRITON_BUILD_PYTHON_MODULE)
       CONTENT "${TRITON_EXPORT_SYMBOLS_FILE_CONTENT}")
   endif()
 
-  install(TARGETS triton
+  install(TARGETS tritoncore triton
     COMPONENT libraries
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -476,7 +505,7 @@ if(TRITON_BUILD_PYTHON_MODULE)
     "${TRITON_WHEEL_DIR}/FileCheck"
     COPYONLY)
 
-  # Build plugins when building libtriton since they depend on libtriton.
+  # Build plugins when building libtriton since they depend on Triton libs.
   if(TRITON_EXT_ENABLED)
     add_subdirectory(examples/plugins)
   endif()
