@@ -259,12 +259,6 @@ function(add_triton_library name)
   set_property(GLOBAL APPEND PROPERTY TRITON_LIBS ${name})
   add_triton_object(${name} ${ARGN})
   target_compile_options(${name} PRIVATE ${TRITON_DISABLE_EH_RTTI_FLAGS})
-  if(TRITON_BUILD_PYTHON_MODULE AND NOT MSVC)
-    # libtritoncore must export the C++ surface consumed by the pybind-only
-    # libtriton shared library.
-    target_compile_options(${name} PRIVATE
-      "$<$<COMPILE_LANGUAGE:CXX>:-fvisibility=default>")
-  endif()
 endfunction()
 
 set_property(GLOBAL PROPERTY TRITON_PLUGINS "")
@@ -422,9 +416,15 @@ if(TRITON_BUILD_PYTHON_MODULE)
   add_library(tritoncore SHARED)
   target_link_libraries(tritoncore PRIVATE ${TRITON_CORE_LIBRARIES})
 
+  # Export all symbols from libtritoncore so (a) libtriton and (b) plugins can
+  # link against the Triton/LLVM C++ symbols.
+  if (NOT MSVC)
+    target_compile_options(tritoncore PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-fvisibility=default>")
+  endif()
+
   # Do not propagate libraries that libtritoncore depends on. This ensures
-  # dependents do not accidentally link in their own copies of core Triton
-  # code and LLVM.
+  # dependents do not accidentally link in their own copies of core Triton code
+  # and LLVM.
   set_target_properties(tritoncore PROPERTIES INTERFACE_LINK_LIBRARIES "")
 
   add_library(triton SHARED ${PYTHON_SRC_PATH}/main.cc
@@ -443,6 +443,11 @@ if(TRITON_BUILD_PYTHON_MODULE)
     ${TRITON_CORE_LIBRARIES}
     ${TRITON_PYTHON_LIBRARIES})
 
+  # Hide all symbols in libtriton; potentially avoids symbol conflicts in the
+  # Python scope.
+  if (NOT MSVC)
+    target_compile_options(triton PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-fvisibility=hidden>")
+  endif()
 
   # Do not propagate libraries that libtriton depends on. This ensures that
   # targets that link against libtriton do not accidentally link in their own
