@@ -337,7 +337,6 @@ if(TRITON_BUILD_PYTHON_MODULE)
   endif()
 
   get_property(triton_libs GLOBAL PROPERTY TRITON_LIBS)
-  get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
   set(TRITON_CORE_LIBRARIES
     ${triton_libs}
 
@@ -367,20 +366,24 @@ if(TRITON_BUILD_PYTHON_MODULE)
     LLVMAMDGPUCodeGen
     LLVMAMDGPUAsmParser
     LLVMLTO
-    lldCommon
   )
-  if(UNIX AND NOT APPLE)
-    list(APPEND TRITON_CORE_LIBRARIES lldELF)
-  endif()
 
+  get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
   set(TRITON_PYTHON_LIBRARIES
     Python3::Module
     pybind11::headers
+
     MLIRLLVMToLLVMIRTranslation
     MLIRBuiltinToLLVMIRTranslation
     MLIRNVVMToLLVM
     LLVMMIRParser
   )
+  if(TARGET TritonAMD)
+    list(APPEND TRITON_PYTHON_LIBRARIES lldCommon)
+    if(UNIX AND NOT APPLE)
+      list(APPEND TRITON_PYTHON_LIBRARIES lldELF)
+    endif()
+  endif()
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR # Linux arm64
      CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" OR # macOS arm64
      CMAKE_OSX_ARCHITECTURES MATCHES "arm64")  # also macOS arm64
