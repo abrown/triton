@@ -226,6 +226,7 @@ endif()
 
 # MLIR
 find_package(MLIR REQUIRED CONFIG PATHS ${MLIR_DIR})
+find_package(LLD REQUIRED CONFIG PATHS ${LLD_DIR})
 
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
@@ -365,11 +366,20 @@ if(TRITON_BUILD_PYTHON_MODULE)
     # LLVMNVPTXAsmPrinter
     LLVMAMDGPUCodeGen
     LLVMAMDGPUAsmParser
+    LLVMLTO
+    lldCommon
   )
+  if(UNIX AND NOT APPLE)
+    list(APPEND TRITON_CORE_LIBRARIES lldELF)
+  endif()
+
   set(TRITON_PYTHON_LIBRARIES
-    ${triton_plugins}
     Python3::Module
     pybind11::headers
+    MLIRLLVMToLLVMIRTranslation
+    MLIRBuiltinToLLVMIRTranslation
+    MLIRNVVMToLLVM
+    LLVMMIRParser
   )
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR # Linux arm64
      CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" OR # macOS arm64
@@ -405,7 +415,13 @@ if(TRITON_BUILD_PYTHON_MODULE)
   add_compile_definitions(TRITON_BACKENDS_TUPLE=${TRITON_BACKENDS_TUPLE})
 
   add_library(tritoncore SHARED)
-  target_link_libraries(tritoncore PRIVATE ${TRITON_CORE_LIBRARIES})
+  if(UNIX AND NOT APPLE)
+    # Self-registering MLIR symbols require whole-archive linking so they are
+    # automatically initialized.
+    target_link_libraries(tritoncore PRIVATE "-Wl,--whole-archive" ${TRITON_CORE_LIBRARIES} "-Wl,--no-whole-archive")
+  else()
+    target_link_libraries(tritoncore PRIVATE ${TRITON_CORE_LIBRARIES})
+  endif()
 
   # Export all symbols from libtritoncore so (a) libtriton and (b) plugins can
   # link against the Triton/LLVM C++ symbols.
@@ -427,11 +443,15 @@ if(TRITON_BUILD_PYTHON_MODULE)
                   ${PYTHON_SRC_PATH}/interpreter.cc
                   ${PYTHON_SRC_PATH}/llvm.cc
                   ${PYTHON_SRC_PATH}/specialize.cc)
+  # Add plugin object code in libtriton without linking plugin targets, which
+  # would otherwise drag transitive core libraries into libtriton.
+  foreach(plugin ${triton_plugins})
+    target_sources(triton PRIVATE $<TARGET_OBJECTS:${plugin}>)
+  endforeach()
 
   # Keep Python-specific code in libtriton and link against C++ core.
   target_link_libraries(triton PRIVATE
     tritoncore
-    ${TRITON_CORE_LIBRARIES}
     ${TRITON_PYTHON_LIBRARIES})
 
   # Hide all symbols in libtriton; potentially avoids symbol conflicts in the
