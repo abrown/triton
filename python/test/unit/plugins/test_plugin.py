@@ -31,6 +31,7 @@ def test_op(capfd, device: str):
     if os.environ.get('TRITON_EXT_ENABLED', '0') == '0':
         return
 
+    # TODO: remove once plugins have a Python package that calls this.
     assert not hasattr(triton._C.libtriton.passes.plugin, "add_plugin")
     lib = os.getenv('TRITON_PLUGIN_PATHS')
     triton._C.libtriton.passes.plugin.extend_with(lib)

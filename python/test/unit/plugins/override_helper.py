@@ -11,6 +11,7 @@ import custom_stages
 
 DEVICE = triton.runtime.driver.active.get_active_torch_device()
 
+# TODO: remove once plugins have a Python package that calls this.
 assert not hasattr(triton._C.libtriton.passes.plugin, "add_plugingpu_conversion")
 lib = os.getenv('TRITON_PLUGIN_PATHS')
 context = triton._C.libtriton.ir.context()
