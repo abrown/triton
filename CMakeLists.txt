@@ -455,6 +455,21 @@ if(TRITON_BUILD_PYTHON_MODULE)
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/python/
+    COMPONENT python
+    DESTINATION python
+    FILES_MATCHING PATTERN "*.so" EXCLUDE
+                   PATTERN "*.pyc" EXCLUDE
+                   PATTERN "__pycache__" EXCLUDE
+  )
+  # \"\${CMAKE_INSTALL_PREFIX}/\${CMAKE_INSTALL_LIBDIR}/libtriton.so\"
+  message(STATUS "Installing symlink for libtriton.so to: ${CMAKE_INSTALL_PREFIX}/python/triton/_C")
+  install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" -E create_symlink
+          \"../../../lib64/libtriton.so\"
+          \"\${CMAKE_INSTALL_PREFIX}/python/triton/_C/libtriton.so\"
+          COMMAND_ERROR_IS_FATAL ANY)"
+      COMPONENT python
+  )
 
   if (NOT DEFINED LLVM_SYSPATH)
       message(FATAL_ERROR "LLVM_SYSPATH must be set.")
@@ -525,6 +540,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
   COMPONENT headers
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING PATTERN "*.td")
+# TODO: cannot remove because include/triton/Tools/PluginUtils.h uses python/src/ir.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/python/
   COMPONENT headers
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/python
